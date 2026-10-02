@@ -20,11 +20,19 @@ jobs:
           python-version: "3.12"
 
       - name: Install toolchain for integration tests
+        timeout-minutes: 10
+        env:
+          DEBIAN_FRONTEND: noninteractive
         run: |
+          # The man-db trigger can stall apt for many minutes on hosted runners.
+          echo "set man-db/auto-update false" | sudo debconf-communicate
+          sudo dpkg-reconfigure -f noninteractive man-db
           sudo apt-get update
-          sudo apt-get install -y gdb-multiarch gcc-arm-none-eabi qemu-system-arm
+          sudo apt-get install -y --no-install-recommends \
+            gdb-multiarch gcc-arm-none-eabi libnewlib-arm-none-eabi make qemu-system-arm
 
       - name: Test
+        timeout-minutes: 10
         run: |
           pip install -e '.[test]' build
           pytest -v

@@ -3,6 +3,8 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  # Manual run: releases the version in pyproject.toml, creating tag v<version>.
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -27,21 +29,26 @@ jobs:
           pip install -e '.[test]' build
           pytest -v
 
-      - name: Check tag matches package version
+      - name: Resolve release tag
         run: |
           version=$(python -c "import tomllib;print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
-          test "v$version" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME != v$version"; exit 1; }
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "tag $GITHUB_REF_NAME != v$version"; exit 1
+          fi
+          echo "TAG=v$version" >> "$GITHUB_ENV"
 
       - name: Build wheel, sdist and zip
         run: |
           python -m build
-          name="renode-gdb-mcp-${GITHUB_REF_NAME#v}"
+          name="renode-gdb-mcp-${TAG#v}"
           git archive --format=zip --prefix="$name/" -o "dist/$name.zip" HEAD
           ls -l dist
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          name: renode-gdb-mcp ${{ github.ref_name }}
+          tag_name: ${{ env.TAG }}
+          target_commitish: ${{ github.sha }}
+          name: renode-gdb-mcp ${{ env.TAG }}
           body_path: CHANGELOG.md
           files: dist/*

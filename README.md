@@ -118,18 +118,19 @@ All tools take an optional `session` (default `"default"`).
   firmware timers stop and nothing goes out on the UART. A Java test waiting on a
   reply with a wall-clock timeout will fail. To watch running tests, use
   `gdb_dprintf`, keep halts short, or raise the test's timeouts while debugging.
-- **A paused emulation looks like a running target.** If someone runs `pause` through
-  the Renode MCP, `gdb_continue` and `gdb_wait_for_stop` just time out. The tools
-  mention this in their timeout messages.
-- **Changes made behind GDB's back.** After `machine Reset`, `cpu PC …`, or
-  `sysbus Write…` through the Renode MCP, call `gdb_resync`.
 - **MMIO reads have side effects.** `gdb_read_memory` on a peripheral address performs
   a real bus read on the Renode model (it can clear status flags, pop a FIFO, …). Use
   the Renode MCP to look at peripherals.
-- **Changing breakpoints while running.** `gdb_breakpoint`, `gdb_dprintf`, and the delete
-  and enable tools briefly interrupt the CPU, apply the change, and resume it
-  (`auto_halt=true`). Reading registers or memory while running is refused with a
-  hint instead.
+- **Breakpoint changes while running:** adding or removing breakpoints and log points
+  (`gdb_breakpoint`, `gdb_watchpoint`, `gdb_dprintf`, `gdb_delete_breakpoints`,
+  `gdb_enable_breakpoints`) briefly halts the CPU, applies the change and resumes
+  (`auto_halt=true`). Reading registers or memory while running is refused, with a hint
+  to use the Renode MCP instead.
+- **Paused emulation:** if the Renode MCP has run `pause`, GDB still sees the target as
+  "running" and nothing happens. The timeout messages of `gdb_continue`,
+  `gdb_wait_for_stop` and `gdb_interrupt` point this out.
+- **`gdb_resync`:** call this after a reset, a `cpu PC` change or a memory write done
+  through the Renode MCP, so GDB drops its stale cached values.
 - **Detaching** removes the breakpoints. Renode then keeps running or stays paused,
   according to its own emulation state.
 

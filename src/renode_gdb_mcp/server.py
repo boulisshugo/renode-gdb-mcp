@@ -47,10 +47,16 @@ Important Renode interactions:
   timers, UART output, and replies to your Java tests are frozen. Tests with wall-clock
   timeouts may fail. Prefer gdb_dprintf (non-halting log points) for observing running
   tests, and keep halts short.
-- If the emulation is paused in Renode (Renode MCP `pause`), GDB still thinks the target
-  is "running" but nothing progresses. Make sure the emulation is started.
-- After a reset or memory/register write done through the Renode MCP, call gdb_resync so
-  GDB drops its stale caches.
+- Breakpoint changes while running: gdb_breakpoint, gdb_watchpoint, gdb_dprintf,
+  gdb_delete_breakpoints and gdb_enable_breakpoints briefly halt the CPU, apply the change
+  and resume it (auto_halt=true). Reading registers or memory while running is refused;
+  call gdb_interrupt first, or read live state through the Renode MCP
+  (e.g. `sysbus ReadDoubleWord 0x...`).
+- Paused emulation: if the Renode MCP has run `pause`, GDB still sees the target as
+  "running" and nothing happens; gdb_continue/gdb_wait_for_stop/gdb_interrupt time out.
+  Make sure the emulation is started.
+- gdb_resync: call it after a reset (`machine Reset`), a `cpu PC` change or a memory write
+  done through the Renode MCP, so GDB drops its stale cached values.
 - Reading MMIO (peripheral) addresses through gdb_read_memory performs real bus reads and
   can have side effects (e.g. clearing status flags). Prefer the Renode MCP for
   peripheral inspection.
